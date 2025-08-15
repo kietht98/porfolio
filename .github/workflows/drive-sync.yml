@@ -59,7 +59,8 @@ jobs:
           git config --global --add safe.directory "$(pwd)"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
+              # Dùng đúng URL remote có token, tránh URL trần gây 403
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch origin "$BRANCH"
           git checkout "$BRANCH" || git checkout -b "$BRANCH"
           git pull --rebase origin "$BRANCH" || true
