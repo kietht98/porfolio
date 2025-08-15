@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { google } from "googleapis";
-import AdmZip from "adm-zip";
+import { execFileSync } from "node:child_process";
 
 const {
   GDRIVE_CREDENTIALS_PATH = "creds.json",
@@ -24,10 +24,32 @@ async function getAuth() {
   return await auth.getClient();
 }
 
+async function resolveFileId(drive, fileId) {
+  const meta = await drive.files.get({
+    fileId,
+    fields: "id,name,mimeType,shortcutDetails",
+    supportsAllDrives: true,
+  });
+  const f = meta.data;
+  if (f.mimeType === "application/vnd.google-apps.shortcut") {
+    return f.shortcutDetails?.targetId;
+  }
+  return fileId;
+}
+
+async function getFileMeta(drive, fileId) {
+  const { data } = await drive.files.get({
+    fileId,
+    fields: "id,name,mimeType,size,md5Checksum,driveId",
+    supportsAllDrives: true,
+  });
+  return data;
+}
+
 async function downloadFile(drive, fileId, outPath) {
   const dest = fs.createWriteStream(outPath);
   const { data } = await drive.files.get(
-    { fileId, alt: "media" },
+    { fileId, alt: "media", supportsAllDrives: true },
     { responseType: "stream" }
   );
   await new Promise((resolve, reject) => {
@@ -39,11 +61,10 @@ async function downloadFile(drive, fileId, outPath) {
   log(`Downloaded ${outPath} (${stat.size} bytes)`);
 }
 
-async function listZipInFolder(drive, folderId) {
-  // Tìm các file .zip trực tiếp trong folder
+async function listArchivesInFolder(drive, folderId) {
   const q = [
     `'${folderId}' in parents`,
-    "mimeType = 'application/zip' or name contains '.zip'",
+    "(name contains '.zip' or name contains '.7z')",
     "trashed = false",
   ].join(" and ");
 
@@ -52,12 +73,22 @@ async function listZipInFolder(drive, folderId) {
     fields: "files(id, name, modifiedTime, size)",
     pageSize: 1000,
     orderBy: "modifiedTime desc",
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
   });
 
   return res.data.files || [];
 }
 
-function unzipToTarget(archivePath, targetDir, { stripTopDir = false } = {}) {
+function looksLikeZip(filePath) {
+  const fd = fs.openSync(filePath, "r");
+  const buf = Buffer.alloc(4);
+  fs.readSync(fd, buf, 0, 4, 0);
+  fs.closeSync(fd);
+  return buf[0] === 0x50 && buf[1] === 0x4b && buf[2] === 0x03 && buf[3] === 0x04;
+}
+
+function extractArchive(archivePath, targetDir, { stripTopDir = false } = {}) {
   fs.mkdirSync(targetDir || ".", { recursive: true });
   const ext = path.extname(archivePath).toLowerCase();
 
@@ -100,36 +131,38 @@ async function main() {
   const stripTopDir = STRIP_TOP_DIR === "1";
 
   if (GDRIVE_FILE_ID) {
-    // Mode: 1 file cụ thể
-    const out = path.join(tmpDir, "source.zip");
-    await downloadFile(drive, GDRIVE_FILE_ID, out);
-    unzipToTarget(out, targetDir, { stripTopDir });
+    let realId = await resolveFileId(drive, GDRIVE_FILE_ID);
+    const meta = await getFileMeta(drive, realId);
+    if (meta.mimeType?.startsWith("application/vnd.google-apps")) {
+      throw new Error(`File ${meta.name} is a Google Doc type, not a binary archive`);
+    }
+    const out = path.join(tmpDir, meta.name);
+    await downloadFile(drive, realId, out);
+    extractArchive(out, targetDir, { stripTopDir });
   } else if (GDRIVE_FOLDER_ID) {
-    const files = await listZipInFolder(drive, GDRIVE_FOLDER_ID);
+    const files = await listArchivesInFolder(drive, GDRIVE_FOLDER_ID);
     if (!files.length) {
-      log("No .zip found in folder.");
+      log("No archive found in folder.");
       return;
     }
-
-    const pickList =
-      DRIVE_FOLDER_MODE === "all" ? files : [files[0]]; // files đã sort desc theo modifiedTime
-
+    const pickList = DRIVE_FOLDER_MODE === "all" ? files : [files[0]];
     for (const f of pickList) {
-      const out = path.join(tmpDir, `${f.id}.zip`);
+      const out = path.join(tmpDir, f.name);
       log(`Processing: ${f.name} (${f.id}) modified ${f.modifiedTime}`);
       await downloadFile(drive, f.id, out);
-      unzipToTarget(out, targetDir, { stripTopDir });
+      extractArchive(out, targetDir, { stripTopDir });
     }
   } else {
-    throw new Error(
-      "Missing GDRIVE_FILE_ID or GDRIVE_FOLDER_ID. Set one via repo secrets."
-    );
+    throw new Error("Missing GDRIVE_FILE_ID or GDRIVE_FOLDER_ID");
   }
 
-  log("Done unzip. Files are staged in repo working directory.");
+  log("Done extracting. Files are staged in repo working directory.");
 }
 
 main().catch((e) => {
   console.error(e);
+  if (e.response && e.response.data) {
+    console.error("Drive API error body:", e.response.data);
+  }
   process.exit(1);
 });
