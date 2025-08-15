@@ -1,52 +1,85 @@
-name: Sync ZIP from Google Drive to Repo
+name: Sync from Google Drive
 
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "*/30 * * * *" # chạy mỗi 30 phút (đổi theo ý bro)
+    - cron: "*/30 * * * *" # chỉnh theo nhu cầu
+
+concurrency:
+  group: drive-sync
+  cancel-in-progress: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # cần để push
+
     env:
-      # Chế độ xử lý folder: latest | all
-      DRIVE_FOLDER_MODE: latest
-      # Bật bỏ thư mục gốc trong zip (strip-1), set "1" để bật
-      STRIP_TOP_DIR: "0"
+      BRANCH: main                # Đổi nếu repo dùng nhánh khác
+      DRIVE_FOLDER_MODE: latest   # latest | all
+      STRIP_TOP_DIR: "0"          # "1" để bỏ thư mục gốc trong archive
+
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH }}
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install p7zip
+
+      - name: Install unzip & p7zip
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y p7zip-full
-      - name: Install deps for Drive + unzip
-        run: |
-          npm i googleapis adm-zip
+          sudo apt-get install -y unzip p7zip-full
 
-      - name: Write SA credentials to file
-        run: |
-          echo '${{ secrets.GDRIVE_CREDENTIALS_JSON }}' > creds.json
+      - name: Install Google Drive SDK
+        run: npm i googleapis
 
-      - name: Download + unzip + stage files
+      - name: Write Service Account credentials
+        run: echo '${{ secrets.GDRIVE_CREDENTIALS_JSON }}' > creds.json
+
+      - name: Download + extract + stage files
         env:
           GDRIVE_CREDENTIALS_PATH: creds.json
-          GDRIVE_FILE_ID: ${{ secrets.GDRIVE_FILE_ID }}
-          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
-          REPO_TARGET_DIR: ${{ secrets.REPO_TARGET_DIR }}
+          GDRIVE_FILE_ID: ${{ secrets.GDRIVE_FILE_ID }}     # dùng 1 trong 2
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }} # hoặc folder
+          REPO_TARGET_DIR: ${{ secrets.REPO_TARGET_DIR }}   # vd: "src/"
           DRIVE_FOLDER_MODE: ${{ env.DRIVE_FOLDER_MODE }}
           STRIP_TOP_DIR: ${{ env.STRIP_TOP_DIR }}
-        run: |
-          node scripts/drive_sync.mjs
+        run: node scripts/drive_sync.mjs
 
-      - name: Commit & push
+      - name: Commit & push (rebase + retry)
+        env:
+          BRANCH: ${{ env.BRANCH }}
         run: |
+          git config --global --add safe.directory "$(pwd)"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin "$BRANCH"
+          git checkout "$BRANCH" || git checkout -b "$BRANCH"
+          git pull --rebase origin "$BRANCH" || true
+
           git add -A
-          git commit -m "Auto sync from Google Drive zip(s)" || echo "No changes to commit"
-          git push
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "Auto sync from Google Drive archive(s)"
+
+          n=0
+          until [ $n -ge 3 ]; do
+            if git push origin "$BRANCH"; then
+              echo "Push OK"; break
+            fi
+            echo "Push failed, pulling & retrying..."
+            git pull --rebase origin "$BRANCH" || true
+            n=$((n+1))
+            sleep 2
+          done
+
+          if [ $n -ge 3 ]; then
+            echo "Push failed after retries" >&2
+            exit 1
+          fi
