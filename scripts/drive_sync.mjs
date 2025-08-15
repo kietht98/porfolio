@@ -6,7 +6,7 @@ import AdmZip from "adm-zip";
 
 const {
   GDRIVE_CREDENTIALS_PATH = "creds.json",
-  GDRIVE_FILE_ID="1Qa6x1l82OuPUIwOSO2l50oLLmRzSpI18",
+  GDRIVE_FILE_ID,
   GDRIVE_FOLDER_ID,
   REPO_TARGET_DIR = "",
   DRIVE_FOLDER_MODE = "latest", // latest | all
