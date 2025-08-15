@@ -16,14 +16,15 @@ jobs:
       contents: write   # cần để push
 
     env:
-      BRANCH: develop             # 👈 push vào branch develop
+      BRANCH: develop             # branch đích
       DRIVE_FOLDER_MODE: latest   # latest | all
       STRIP_TOP_DIR: "0"          # "1" để bỏ thư mục gốc trong archive
 
     steps:
-      # Checkout mặc định (không pin ref) để vẫn chạy được nếu 'develop' chưa tồn tại
+      # Luôn checkout từ main
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Setup Node
@@ -67,11 +68,9 @@ jobs:
           git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
 
           git fetch origin
-          # Tạo/checkout develop
           git checkout "$BRANCH" || git checkout -b "$BRANCH"
           git pull --rebase origin "$BRANCH" || true
 
-          # Commit nếu có thay đổi
           git add -A
           if git diff --cached --quiet; then
             echo "No changes to commit"
@@ -79,7 +78,6 @@ jobs:
           fi
           git commit -m "Auto sync from Google Drive archive(s)"
 
-          # Push lần đầu dùng -u, các lần sau vẫn ok
           n=0
           until [ $n -ge 3 ]; do
             if git push -u origin "$BRANCH"; then
