@@ -1,0 +1,49 @@
+name: Sync ZIP from Google Drive to Repo
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "*/30 * * * *" # chạy mỗi 30 phút (đổi theo ý bro)
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      # Chế độ xử lý folder: latest | all
+      DRIVE_FOLDER_MODE: latest
+      # Bật bỏ thư mục gốc trong zip (strip-1), set "1" để bật
+      STRIP_TOP_DIR: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps for Drive + unzip
+        run: |
+          npm i googleapis adm-zip
+
+      - name: Write SA credentials to file
+        run: |
+          echo '${{ secrets.GDRIVE_CREDENTIALS_JSON }}' > creds.json
+
+      - name: Download + unzip + stage files
+        env:
+          GDRIVE_CREDENTIALS_PATH: creds.json
+          GDRIVE_FILE_ID: ${{ secrets.GDRIVE_FILE_ID }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+          REPO_TARGET_DIR: ${{ secrets.REPO_TARGET_DIR }}
+          DRIVE_FOLDER_MODE: ${{ env.DRIVE_FOLDER_MODE }}
+          STRIP_TOP_DIR: ${{ env.STRIP_TOP_DIR }}
+        run: |
+          node scripts/drive_sync.mjs
+
+      - name: Commit & push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Auto sync from Google Drive zip(s)" || echo "No changes to commit"
+          git push
