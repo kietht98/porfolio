@@ -3,7 +3,7 @@ name: Sync from Google Drive
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/30 * * * *" # chỉnh theo nhu cầu
 
 concurrency:
   group: drive-sync
@@ -13,17 +13,17 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write   # cần để push
 
     env:
-      BRANCH: develop
-      DRIVE_FOLDER_MODE: latest
-      STRIP_TOP_DIR: "0"
+      BRANCH: develop             # nhánh đích
+      DRIVE_FOLDER_MODE: latest   # latest | all
+      STRIP_TOP_DIR: "0"          # "1" để bỏ thư mục gốc trong archive
 
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: main               # workflow sống trên main, checkout main làm base
           fetch-depth: 0
 
       - name: Setup Node
@@ -39,43 +39,245 @@ jobs:
       - name: Install Google Drive SDK
         run: npm i googleapis
 
-      # ❗️Ghi credentials ra thư mục tạm, KHÔNG nằm trong repo
+      # ❗️Ghi SA credentials ra thư mục tạm của runner (không vào repo)
       - name: Prepare Service Account credentials (temp path)
         id: sa
         run: |
           echo '${{ secrets.GDRIVE_CREDENTIALS_JSON }}' > "$RUNNER_TEMP/creds.json"
           echo "creds=$RUNNER_TEMP/creds.json" >> "$GITHUB_OUTPUT"
 
-      - name: Download + extract + stage files
+      # Viết script Node vào thư mục tạm và chạy (hỗ trợ .zip/.7z, Shared Drive)
+      - name: Run Drive sync (inline script)
         env:
-          # Trỏ script vào file creds ở thư mục tạm
           GDRIVE_CREDENTIALS_PATH: ${{ steps.sa.outputs.creds }}
-          GDRIVE_FILE_ID: ${{ secrets.GDRIVE_FILE_ID }}
-          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
-          REPO_TARGET_DIR: ${{ secrets.REPO_TARGET_DIR }}
+          GDRIVE_FILE_ID: ${{ secrets.GDRIVE_FILE_ID }}       # dùng 1 trong 2
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}   # hoặc folder
+          REPO_TARGET_DIR: ${{ secrets.REPO_TARGET_DIR }}     # vd: "src/"
           DRIVE_FOLDER_MODE: ${{ env.DRIVE_FOLDER_MODE }}
           STRIP_TOP_DIR: ${{ env.STRIP_TOP_DIR }}
-        run: node scripts/drive_sync.mjs
+        run: |
+          cat > "$RUNNER_TEMP/drive_sync.mjs" <<'EOF'
+          import fs from "node:fs";
+          import path from "node:path";
+          import { google } from "googleapis";
+          import { execFileSync } from "node:child_process";
 
-      # (Khuyến nghị) Loại bỏ file nhạy cảm nếu có trong archive trước khi commit
+          const {
+            GDRIVE_CREDENTIALS_PATH = "",
+            GDRIVE_FILE_ID,
+            GDRIVE_FOLDER_ID,
+            REPO_TARGET_DIR = "",
+            DRIVE_FOLDER_MODE = "latest", // latest | all
+            STRIP_TOP_DIR = "0",
+          } = process.env;
+
+          function log(...args) { console.log("[drive-sync]", ...args); }
+
+          async function getAuth() {
+            const creds = JSON.parse(fs.readFileSync(GDRIVE_CREDENTIALS_PATH, "utf8"));
+            const scopes = ["https://www.googleapis.com/auth/drive.readonly"];
+            const auth = new google.auth.GoogleAuth({ credentials: creds, scopes });
+            return await auth.getClient();
+          }
+
+          async function resolveFileId(drive, fileId) {
+            const meta = await drive.files.get({
+              fileId,
+              fields: "id,name,mimeType,shortcutDetails",
+              supportsAllDrives: true,
+            });
+            const f = meta.data;
+            if (f.mimeType === "application/vnd.google-apps.shortcut") {
+              return f.shortcutDetails?.targetId;
+            }
+            return fileId;
+          }
+
+          async function getFileMeta(drive, fileId) {
+            const { data } = await drive.files.get({
+              fileId,
+              fields: "id,name,mimeType,size,md5Checksum,driveId",
+              supportsAllDrives: true,
+            });
+            return data;
+          }
+
+          async function downloadFile(drive, fileId, outPath) {
+            const dest = fs.createWriteStream(outPath);
+            const { data } = await drive.files.get(
+              { fileId, alt: "media", supportsAllDrives: true },
+              { responseType: "stream" }
+            );
+            await new Promise((resolve, reject) => {
+              data.on("error", reject);
+              dest.on("finish", resolve);
+              data.pipe(dest);
+            });
+            const stat = fs.statSync(outPath);
+            log(`Downloaded ${outPath} (${stat.size} bytes)`);
+          }
+
+          async function listArchivesInFolder(drive, folderId) {
+            const q = [
+              `'${folderId}' in parents`,
+              "(name contains '.zip' or name contains '.7z')",
+              "trashed = false",
+            ].join(" and ");
+
+            const res = await drive.files.list({
+              q,
+              fields: "files(id, name, modifiedTime, size)",
+              pageSize: 1000,
+              orderBy: "modifiedTime desc",
+              includeItemsFromAllDrives: true,
+              supportsAllDrives: true,
+            });
+            return res.data.files || [];
+          }
+
+          function looksLikeZip(filePath) {
+            try {
+              const fd = fs.openSync(filePath, "r");
+              const buf = Buffer.alloc(4);
+              fs.readSync(fd, buf, 0, 4, 0);
+              fs.closeSync(fd);
+              return buf[0] === 0x50 && buf[1] === 0x4b && buf[2] === 0x03 && buf[3] === 0x04;
+            } catch { return false; }
+          }
+
+          function extractArchive(archivePath, targetDir, { stripTopDir = false } = {}) {
+            fs.mkdirSync(targetDir || ".", { recursive: true });
+            const ext = path.extname(archivePath).toLowerCase();
+
+            if (ext === ".zip") {
+              if (!looksLikeZip(archivePath)) {
+                throw new Error(`File ${archivePath} is not a valid ZIP (missing PK signature)`);
+              }
+              execFileSync("unzip", ["-o", archivePath, "-d", targetDir], { stdio: "inherit" });
+            } else if (ext === ".7z") {
+              execFileSync("7z", ["x", "-y", archivePath, `-o${targetDir}`], { stdio: "inherit" });
+            } else {
+              throw new Error(`Unsupported archive type: ${ext}`);
+            }
+
+            if (stripTopDir) {
+              const items = fs.readdirSync(targetDir);
+              if (items.length === 1) {
+                const only = path.join(targetDir, items[0]);
+                if (fs.statSync(only).isDirectory()) {
+                  for (const f of fs.readdirSync(only)) {
+                    fs.renameSync(path.join(only, f), path.join(targetDir, f));
+                  }
+                  fs.rmSync(only, { recursive: true, force: true });
+                }
+              }
+            }
+          }
+
+          async function main() {
+            if (!GDRIVE_CREDENTIALS_PATH) throw new Error("Missing GDRIVE_CREDENTIALS_PATH");
+            const auth = await getAuth();
+            const drive = google.drive({ version: "v3", auth });
+
+            const tmpDir = "/tmp/drive-sync";
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+            fs.mkdirSync(tmpDir, { recursive: true });
+
+            const targetDir = REPO_TARGET_DIR ? REPO_TARGET_DIR.replace(/\/+$/, "") : ".";
+            fs.mkdirSync(targetDir || ".", { recursive: true });
+
+            const stripTopDir = STRIP_TOP_DIR === "1";
+
+            if (GDRIVE_FILE_ID) {
+              let realId = await resolveFileId(drive, GDRIVE_FILE_ID);
+              const meta = await getFileMeta(drive, realId);
+              if (meta.mimeType?.startsWith("application/vnd.google-apps")) {
+                throw new Error(`File ${meta.name} is a Google Doc type, not a binary archive`);
+              }
+              const out = path.join(tmpDir, meta.name || "source.bin");
+              await downloadFile(drive, realId, out);
+              extractArchive(out, targetDir, { stripTopDir });
+            } else if (GDRIVE_FOLDER_ID) {
+              const files = await listArchivesInFolder(drive, GDRIVE_FOLDER_ID);
+              if (!files.length) { log("No archive found in folder."); return; }
+              const pickList = DRIVE_FOLDER_MODE === "all" ? files : [files[0]];
+              for (const f of pickList) {
+                const out = path.join(tmpDir, f.name || `${f.id}.bin`);
+                log(`Processing: ${f.name} (${f.id}) modified ${f.modifiedTime}`);
+                await downloadFile(drive, f.id, out);
+                extractArchive(out, targetDir, { stripTopDir });
+              }
+            } else {
+              throw new Error("Missing GDRIVE_FILE_ID or GDRIVE_FOLDER_ID");
+            }
+
+            log("Done extracting. Files are staged in repo working directory.");
+          }
+
+          main().catch((e) => {
+            console.error(e);
+            if (e.response && e.response.data) console.error("Drive API error body:", e.response.data);
+            process.exit(1);
+          });
+          EOF
+
+          node "$RUNNER_TEMP/drive_sync.mjs"
+
+      # Bỏ file nhạy cảm nếu lỡ có trong archive (sanitize trước khi commit)
       - name: Sanitize sensitive files before commit
         run: |
           set -e
-          # danh sách mẫu nhạy cảm; thêm/bớt tuỳ repo
           patterns='
-          .env
-          .env.*
+          creds.json
           *.pem
           *id_rsa*
           *id_ed25519*
           *.key
+          .env
+          .env.*
           *keystore*
           *credentials.json
           '
           for p in $patterns; do
-            # xóa cả file đã được stage (nếu có)
             git rm -rf --cached --ignore-unmatch $p 2>/dev/null || true
             rm -rf $p 2>/dev/null || true
           done
 
-      - name: Commit & push to develo
+      - name: Commit & push to develop (create if missing)
+        env:
+          BRANCH: ${{ env.BRANCH }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          git config --global --add safe.directory "$PWD"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Remote có token để tránh 403
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
+
+          git fetch origin
+          git checkout "$BRANCH" || git checkout -b "$BRANCH"
+          # đảm bảo lịch sử local sạch (nếu có commit xấu trước đó)
+          git reset --hard "origin/$BRANCH" || true
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Auto sync from Google Drive archive(s) [sanitized]"
+
+          n=0
+          until [ $n -ge 3 ]; do
+            if git push -u origin "$BRANCH"; then
+              echo "Push OK"; exit 0
+            fi
+            echo "Push failed, pulling & retrying..."
+            git pull --rebase origin "$BRANCH" || true
+            n=$((n+1)); sleep 2
+          done
+
+          echo "Push failed after retries" >&2
+          exit 1
