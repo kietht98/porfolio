@@ -20,7 +20,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
+      - name: Install p7zip
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y p7zip-full
       - name: Install deps for Drive + unzip
         run: |
           npm i googleapis adm-zip
