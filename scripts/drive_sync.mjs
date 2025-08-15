@@ -57,24 +57,32 @@ async function listZipInFolder(drive, folderId) {
   return res.data.files || [];
 }
 
-function unzipToTarget(zipPath, targetDir, { stripTopDir = false } = {}) {
-  const zip = new AdmZip(zipPath);
-  const entries = zip.getEntries();
-  log(`Unzipping ${zipPath} → ${targetDir} (${entries.length} entries)`);
+function unzipToTarget(archivePath, targetDir, { stripTopDir = false } = {}) {
+  fs.mkdirSync(targetDir || ".", { recursive: true });
+  const ext = path.extname(archivePath).toLowerCase();
 
-  for (const e of entries) {
-    if (e.isDirectory) continue;
-    let entryName = e.entryName.replace(/\\/g, "/");
-
-    if (stripTopDir) {
-      const parts = entryName.split("/");
-      if (parts.length > 1) entryName = parts.slice(1).join("/");
-      else continue; // file ở root bị bỏ nếu strip-1
+  if (ext === ".zip") {
+    if (!looksLikeZip(archivePath)) {
+      throw new Error(`File ${archivePath} is not a valid ZIP (missing PK signature)`);
     }
+    execFileSync("unzip", ["-o", archivePath, "-d", targetDir], { stdio: "inherit" });
+  } else if (ext === ".7z") {
+    execFileSync("7z", ["x", "-y", archivePath, `-o${targetDir}`], { stdio: "inherit" });
+  } else {
+    throw new Error(`Unsupported archive type: ${ext}`);
+  }
 
-    const outPath = path.join(targetDir, entryName);
-    fs.mkdirSync(path.dirname(outPath), { recursive: true });
-    fs.writeFileSync(outPath, e.getData());
+  if (stripTopDir) {
+    const items = fs.readdirSync(targetDir);
+    if (items.length === 1) {
+      const only = path.join(targetDir, items[0]);
+      if (fs.statSync(only).isDirectory()) {
+        for (const f of fs.readdirSync(only)) {
+          fs.renameSync(path.join(only, f), path.join(targetDir, f));
+        }
+        fs.rmSync(only, { recursive: true, force: true });
+      }
+    }
   }
 }
 
