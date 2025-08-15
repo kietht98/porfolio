@@ -3,7 +3,7 @@ name: Sync from Google Drive
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "*/30 * * * *" # chỉnh theo nhu cầu
+    - cron: "*/30 * * * *"
 
 concurrency:
   group: drive-sync
@@ -13,12 +13,12 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # cần để push
+      contents: write
 
     env:
-      BRANCH: main                # Đổi nếu repo dùng nhánh khác
-      DRIVE_FOLDER_MODE: latest   # latest | all
-      STRIP_TOP_DIR: "0"          # "1" để bỏ thư mục gốc trong archive
+      BRANCH: develop              # 👈 branch mới
+      DRIVE_FOLDER_MODE: latest
+      STRIP_TOP_DIR: "0"
 
     steps:
       - uses: actions/checkout@v4
@@ -45,9 +45,9 @@ jobs:
       - name: Download + extract + stage files
         env:
           GDRIVE_CREDENTIALS_PATH: creds.json
-          GDRIVE_FILE_ID: ${{ secrets.GDRIVE_FILE_ID }}     # dùng 1 trong 2
-          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }} # hoặc folder
-          REPO_TARGET_DIR: ${{ secrets.REPO_TARGET_DIR }}   # vd: "src/"
+          GDRIVE_FILE_ID: ${{ secrets.GDRIVE_FILE_ID }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+          REPO_TARGET_DIR: ${{ secrets.REPO_TARGET_DIR }}
           DRIVE_FOLDER_MODE: ${{ env.DRIVE_FOLDER_MODE }}
           STRIP_TOP_DIR: ${{ env.STRIP_TOP_DIR }}
         run: node scripts/drive_sync.mjs
@@ -55,13 +55,15 @@ jobs:
       - name: Commit & push (rebase + retry)
         env:
           BRANCH: ${{ env.BRANCH }}
+          GITHUB_TOKEN: ${{ secrets.PUSH_TOKEN }}
         run: |
           git config --global --add safe.directory "$(pwd)"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-              # Dùng đúng URL remote có token, tránh URL trần gây 403
-          git remote set-url origin "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git fetch origin "$BRANCH"
+
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          git fetch origin
           git checkout "$BRANCH" || git checkout -b "$BRANCH"
           git pull --rebase origin "$BRANCH" || true
 
