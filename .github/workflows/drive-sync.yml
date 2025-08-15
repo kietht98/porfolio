@@ -3,7 +3,7 @@ name: Sync from Google Drive
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "*/30 * * * *" # chỉnh theo nhu cầu
+    - cron: "*/30 * * * *"
 
 concurrency:
   group: drive-sync
@@ -13,15 +13,14 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # cần để push
+      contents: write
 
     env:
-      BRANCH: develop             # branch đích
-      DRIVE_FOLDER_MODE: latest   # latest | all
-      STRIP_TOP_DIR: "0"          # "1" để bỏ thư mục gốc trong archive
+      BRANCH: develop
+      DRIVE_FOLDER_MODE: latest
+      STRIP_TOP_DIR: "0"
 
     steps:
-      # Luôn checkout từ main
       - uses: actions/checkout@v4
         with:
           ref: main
@@ -40,55 +39,43 @@ jobs:
       - name: Install Google Drive SDK
         run: npm i googleapis
 
-      - name: Write Service Account credentials
-        run: echo '${{ secrets.GDRIVE_CREDENTIALS_JSON }}' > creds.json
+      # ❗️Ghi credentials ra thư mục tạm, KHÔNG nằm trong repo
+      - name: Prepare Service Account credentials (temp path)
+        id: sa
+        run: |
+          echo '${{ secrets.GDRIVE_CREDENTIALS_JSON }}' > "$RUNNER_TEMP/creds.json"
+          echo "creds=$RUNNER_TEMP/creds.json" >> "$GITHUB_OUTPUT"
 
       - name: Download + extract + stage files
         env:
-          GDRIVE_CREDENTIALS_PATH: creds.json
-          GDRIVE_FILE_ID: ${{ secrets.GDRIVE_FILE_ID }}     # dùng 1 trong 2
-          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }} # hoặc folder
-          REPO_TARGET_DIR: ${{ secrets.REPO_TARGET_DIR }}   # vd: "src/"
+          # Trỏ script vào file creds ở thư mục tạm
+          GDRIVE_CREDENTIALS_PATH: ${{ steps.sa.outputs.creds }}
+          GDRIVE_FILE_ID: ${{ secrets.GDRIVE_FILE_ID }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+          REPO_TARGET_DIR: ${{ secrets.REPO_TARGET_DIR }}
           DRIVE_FOLDER_MODE: ${{ env.DRIVE_FOLDER_MODE }}
           STRIP_TOP_DIR: ${{ env.STRIP_TOP_DIR }}
         run: node scripts/drive_sync.mjs
 
-      - name: Commit & push to develop (create if missing)
-        env:
-          BRANCH: ${{ env.BRANCH }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
+      # (Khuyến nghị) Loại bỏ file nhạy cảm nếu có trong archive trước khi commit
+      - name: Sanitize sensitive files before commit
         run: |
           set -e
-          git config --global --add safe.directory "$PWD"
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Remote có token để tránh 403
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
-
-          git fetch origin
-          git checkout "$BRANCH" || git checkout -b "$BRANCH"
-          git pull --rebase origin "$BRANCH" || true
-
-          git add -A
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
-          git commit -m "Auto sync from Google Drive archive(s)"
-
-          n=0
-          until [ $n -ge 3 ]; do
-            if git push -u origin "$BRANCH"; then
-              echo "Push OK"
-              exit 0
-            fi
-            echo "Push failed, pulling & retrying..."
-            git pull --rebase origin "$BRANCH" || true
-            n=$((n+1))
-            sleep 2
+          # danh sách mẫu nhạy cảm; thêm/bớt tuỳ repo
+          patterns='
+          .env
+          .env.*
+          *.pem
+          *id_rsa*
+          *id_ed25519*
+          *.key
+          *keystore*
+          *credentials.json
+          '
+          for p in $patterns; do
+            # xóa cả file đã được stage (nếu có)
+            git rm -rf --cached --ignore-unmatch $p 2>/dev/null || true
+            rm -rf $p 2>/dev/null || true
           done
 
-          echo "Push failed after retries" >&2
-          exit 1
+      - name: Commit & push to develo
