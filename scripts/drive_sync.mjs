@@ -5,7 +5,7 @@ import { google } from "googleapis";
 import { execFileSync } from "node:child_process";
 
 const {
-  GDRIVE_CREDENTIALS_PATH = "creds.json",
+  GDRIVE_CREDENTIALS_PATH = "creds.json", // NHỚ: trong workflow phải truyền path ở $RUNNER_TEMP
   GDRIVE_FILE_ID,
   GDRIVE_FOLDER_ID,
   REPO_TARGET_DIR = "",
