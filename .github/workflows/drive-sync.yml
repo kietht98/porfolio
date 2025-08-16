@@ -16,14 +16,15 @@ jobs:
       contents: write   # cần để push
 
     env:
-      BRANCH: develop             # nhánh đích
-      DRIVE_FOLDER_MODE: latest   # latest | all
-      STRIP_TOP_DIR: "0"          # "1" để bỏ thư mục gốc trong archive
+      SRC_BRANCH: main               # workflow sống trên main
+      BRANCH: develop               # nhánh đích để push
+      DRIVE_FOLDER_MODE: latest     # latest | all
+      STRIP_TOP_DIR: "0"            # "1" để bỏ thư mục gốc trong archive
 
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main               # workflow sống trên main, checkout main làm base
+          ref: ${{ env.SRC_BRANCH }}
           fetch-depth: 0
 
       - name: Setup Node
@@ -39,14 +40,14 @@ jobs:
       - name: Install Google Drive SDK
         run: npm i googleapis
 
-      # ❗️Ghi SA credentials ra thư mục tạm của runner (không vào repo)
+      # ❗️Viết SA credentials ra thư mục tạm, KHÔNG vào repo
       - name: Prepare Service Account credentials (temp path)
         id: sa
         run: |
           echo '${{ secrets.GDRIVE_CREDENTIALS_JSON }}' > "$RUNNER_TEMP/creds.json"
           echo "creds=$RUNNER_TEMP/creds.json" >> "$GITHUB_OUTPUT"
 
-      # Viết script Node vào thư mục tạm và chạy (hỗ trợ .zip/.7z, Shared Drive)
+      # Script Node inline: tải từ Drive (.zip/.7z), giải nén, hỗ trợ Shared Drive
       - name: Run Drive sync (inline script)
         env:
           GDRIVE_CREDENTIALS_PATH: ${{ steps.sa.outputs.creds }}
@@ -67,7 +68,7 @@ jobs:
             GDRIVE_FILE_ID,
             GDRIVE_FOLDER_ID,
             REPO_TARGET_DIR = "",
-            DRIVE_FOLDER_MODE = "latest", // latest | all
+            DRIVE_FOLDER_MODE = "latest",
             STRIP_TOP_DIR = "0",
           } = process.env;
 
@@ -123,7 +124,6 @@ jobs:
               "(name contains '.zip' or name contains '.7z')",
               "trashed = false",
             ].join(" and ");
-
             const res = await drive.files.list({
               q,
               fields: "files(id, name, modifiedTime, size)",
@@ -223,7 +223,7 @@ jobs:
 
           node "$RUNNER_TEMP/drive_sync.mjs"
 
-      # Bỏ file nhạy cảm nếu lỡ có trong archive (sanitize trước khi commit)
+      # Bỏ file nhạy cảm nếu lỡ có trong archive
       - name: Sanitize sensitive files before commit
         run: |
           set -e
@@ -243,7 +243,7 @@ jobs:
             rm -rf $p 2>/dev/null || true
           done
 
-      - name: Commit & push to develop (create if missing)
+      - name: Commit & pull-then-push to develop (create if missing)
         env:
           BRANCH: ${{ env.BRANCH }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -258,10 +258,19 @@ jobs:
           git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
 
           git fetch origin
-          git checkout "$BRANCH" || git checkout -b "$BRANCH"
-          # đảm bảo lịch sử local sạch (nếu có commit xấu trước đó)
-          git reset --hard "origin/$BRANCH" || true
 
+          # Nếu remote/develop tồn tại thì reset về đó để lấy lịch sử sạch; nếu chưa thì tạo từ SRC_BRANCH
+          if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
+            git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
+            git reset --hard "origin/${BRANCH}"
+          else
+            git checkout -B "${BRANCH}" "${SRC_BRANCH}"
+          fi
+
+          # Pull (rebase) trước khi push để tránh non-fast-forward
+          git pull --rebase origin "${BRANCH}" || true
+
+          # Stage & commit
           git add -A
           if git diff --cached --quiet; then
             echo "No changes to commit"
@@ -269,13 +278,14 @@ jobs:
           fi
           git commit -m "Auto sync from Google Drive archive(s) [sanitized]"
 
+          # Push có retry
           n=0
           until [ $n -ge 3 ]; do
-            if git push -u origin "$BRANCH"; then
+            if git push -u origin "${BRANCH}"; then
               echo "Push OK"; exit 0
             fi
             echo "Push failed, pulling & retrying..."
-            git pull --rebase origin "$BRANCH" || true
+            git pull --rebase origin "${BRANCH}" || true
             n=$((n+1)); sleep 2
           done
 
