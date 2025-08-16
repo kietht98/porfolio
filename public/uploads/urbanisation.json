@@ -1,0 +1,40 @@
+[
+  { "phrase": "Urbanization", "meaning": "Đô thị hóa" },
+  { "phrase": "Metropolis", "meaning": "Thành phố lớn" },
+  { "phrase": "Suburb", "meaning": "Ngoại ô" },
+  { "phrase": "Infrastructure", "meaning": "Hạ tầng cơ sở" },
+  { "phrase": "Housing development", "meaning": "Phát triển nhà ở" },
+  { "phrase": "City planning", "meaning": "Quy hoạch đô thị" },
+  { "phrase": "Public transport", "meaning": "Giao thông công cộng" },
+  { "phrase": "Urban sprawl", "meaning": "Sự mở rộng đô thị" },
+  { "phrase": "High-rise buildings", "meaning": "Nhà cao tầng" },
+  { "phrase": "Land use", "meaning": "Sử dụng đất" },
+  { "phrase": "Gentrification", "meaning": "Đổi mới đô thị" },
+  { "phrase": "Green spaces", "meaning": "Không gian xanh" },
+  { "phrase": "Urban renewal", "meaning": "Đổi mới đô thị" },
+  { "phrase": "Population density", "meaning": "Mật độ dân số" },
+  { "phrase": "Commercial area", "meaning": "Khu vực thương mại" },
+  { "phrase": "Residential area", "meaning": "Khu dân cư" },
+  { "phrase": "Urban planning", "meaning": "Quy hoạch đô thị" },
+  { "phrase": "Smart city", "meaning": "Thành phố thông minh" },
+  { "phrase": "Public amenities", "meaning": "Tiện ích công cộng" },
+  { "phrase": "Urban growth", "meaning": "Tăng trưởng đô thị" },
+  { "phrase": "Economic development", "meaning": "Phát triển kinh tế" },
+  { "phrase": "Urban area", "meaning": "Khu vực đô thị" },
+  { "phrase": "Sustainable development", "meaning": "Phát triển bền vững" },
+  { "phrase": "Traffic congestion", "meaning": "Tắc nghẽn giao thông" },
+  { "phrase": "Social infrastructure", "meaning": "Hạ tầng xã hội" },
+  { "phrase": "Urban services", "meaning": "Dịch vụ đô thị" },
+  { "phrase": "Density", "meaning": "Mật độ" },
+  {
+    "phrase": "Mixed-use development",
+    "meaning": "Phát triển sử dụng đa chức năng"
+  },
+  { "phrase": "Cityscape", "meaning": "Cảnh quan thành phố" },
+  {
+    "phrase": "Urban planning policies",
+    "meaning": "Chính sách quy hoạch đô thị"
+  },
+  { "phrase": "Affordable housing", "meaning": "Nhà ở giá rẻ" },
+  { "phrase": "Urban design", "meaning": "Thiết kế đô thị" }
+]

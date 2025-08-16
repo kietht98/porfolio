@@ -1,0 +1,33 @@
+[
+  { "phrase": "Healthy lifestyle", "meaning": "Lối sống lành mạnh" },
+  {
+    "phrase": "Work-life balance",
+    "meaning": "Cân bằng công việc và cuộc sống"
+  },
+  { "phrase": "Fitness routine", "meaning": "Chế độ tập thể dục" },
+  { "phrase": "Diet", "meaning": "Chế độ ăn uống" },
+  { "phrase": "Self-care", "meaning": "Chăm sóc bản thân" },
+  { "phrase": "Wellness", "meaning": "Sức khỏe toàn diện" },
+  { "phrase": "Mindfulness", "meaning": "Chánh niệm" },
+  { "phrase": "Stress management", "meaning": "Quản lý căng thẳng" },
+  { "phrase": "Leisure activities", "meaning": "Hoạt động giải trí" },
+  { "phrase": "Hobbies", "meaning": "Sở thích" },
+  { "phrase": "Workaholic", "meaning": "Người nghiện công việc" },
+  { "phrase": "Minimalism", "meaning": "Lối sống tối giản" },
+  { "phrase": "Social life", "meaning": "Đời sống xã hội" },
+  { "phrase": "Time management", "meaning": "Quản lý thời gian" },
+  { "phrase": "Personal development", "meaning": "Phát triển bản thân" },
+  { "phrase": "Sustainable living", "meaning": "Sống bền vững" },
+  { "phrase": "Work-from-home", "meaning": "Làm việc từ xa" },
+  { "phrase": "Healthy eating", "meaning": "Ăn uống lành mạnh" },
+  { "phrase": "Relaxation techniques", "meaning": "Kỹ thuật thư giãn" },
+  { "phrase": "Self-improvement", "meaning": "Tự cải thiện bản thân" },
+  { "phrase": "Eco-friendly", "meaning": "Thân thiện với môi trường" },
+  { "phrase": "Digital detox", "meaning": "Thải độc kỹ thuật số" },
+  { "phrase": "Productivity", "meaning": "Năng suất" },
+  { "phrase": "Home decor", "meaning": "Trang trí nhà cửa" },
+  { "phrase": "Mind-body connection", "meaning": "Kết nối tâm trí và cơ thể" },
+  { "phrase": "Fitness goals", "meaning": "Mục tiêu thể dục" },
+  { "phrase": "Balanced diet", "meaning": "Chế độ ăn cân bằng" },
+  { "phrase": "Mental health", "meaning": "Sức khỏe tâm lý" }
+]

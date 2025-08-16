@@ -1,0 +1,14 @@
+node_modules
+
+.eslintrc.json
+
+.gitignore
+
+next-env.d.ts
+
+.vscode
+.swc
+__tests__
+
+analyze
+

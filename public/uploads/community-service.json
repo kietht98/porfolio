@@ -1,0 +1,40 @@
+[
+  { "phrase": "Community service", "meaning": "Dịch vụ cộng đồng" },
+  { "phrase": "Volunteer", "meaning": "Tình nguyện viên" },
+  { "phrase": "Charity", "meaning": "Từ thiện" },
+  { "phrase": "Nonprofit organization", "meaning": "Tổ chức phi lợi nhuận" },
+  { "phrase": "Fundraising", "meaning": "Gây quỹ" },
+  { "phrase": "Social impact", "meaning": "Tác động xã hội" },
+  {
+    "phrase": "Outreach program",
+    "meaning": "Chương trình tiếp cận cộng đồng"
+  },
+  { "phrase": "Donation", "meaning": "Quyên góp" },
+  { "phrase": "Philanthropy", "meaning": "Hoạt động nhân đạo" },
+  { "phrase": "Service project", "meaning": "Dự án dịch vụ" },
+  { "phrase": "Civic engagement", "meaning": "Sự tham gia công dân" },
+  { "phrase": "Mentorship", "meaning": "Tư vấn, hướng dẫn" },
+  { "phrase": "Community outreach", "meaning": "Tiếp cận cộng đồng" },
+  { "phrase": "Volunteer work", "meaning": "Công việc tình nguyện" },
+  { "phrase": "Support group", "meaning": "Nhóm hỗ trợ" },
+  { "phrase": "Advocacy", "meaning": "Vận động" },
+  { "phrase": "Social service", "meaning": "Dịch vụ xã hội" },
+  { "phrase": "Community engagement", "meaning": "Sự gắn bó với cộng đồng" },
+  { "phrase": "Crisis intervention", "meaning": "Can thiệp khủng hoảng" },
+  { "phrase": "Youth program", "meaning": "Chương trình cho thanh thiếu niên" },
+  { "phrase": "Health clinic", "meaning": "Phòng khám sức khỏe" },
+  {
+    "phrase": "Homeless shelter",
+    "meaning": "Nhà tạm trú cho người vô gia cư"
+  },
+  { "phrase": "Community center", "meaning": "Trung tâm cộng đồng" },
+  { "phrase": "Environmental initiative", "meaning": "Sáng kiến môi trường" },
+  { "phrase": "Cultural program", "meaning": "Chương trình văn hóa" },
+  { "phrase": "Skill development", "meaning": "Phát triển kỹ năng" },
+  { "phrase": "Civic duty", "meaning": "Nhiệm vụ công dân" },
+  { "phrase": "Caring for the elderly", "meaning": "Chăm sóc người già" },
+  {
+    "phrase": "Community outreach program",
+    "meaning": "Chương trình tiếp cận cộng đồng"
+  }
+]

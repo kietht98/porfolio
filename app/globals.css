@@ -1,0 +1,73 @@
+@import "tailwindcss/base";
+@import "@radix-ui/themes/styles.css";
+@tailwind components;
+@tailwind utilities;
+
+/* reset */
+.rt-reset.button {
+  box-shadow: none;
+}
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+html,
+body {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: #ffffff;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Width and height of the scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+/* Track (background of the scrollbar) */
+* > ::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  -webkit-box-shadow: inset 0 0 6px #f1f1f1;
+}
+
+/* Handle (thumb) */
+* > ::-webkit-scrollbar-thumb {
+  -webkit-box-shadow: inset 0 0 6px #888;
+  background: #888;
+  border-radius: 16px;
+}
+
+/* Handle (thumb) on hover */
+* > ::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Scrollbar corner (where two scrollbars meet) */
+* > ::-webkit-scrollbar-corner {
+  background: #f1f1f1;
+}
+
+* > {
+  scrollbar-color: #888 #f1f1f1;
+  scrollbar-width: thin; /* You can use 'auto', 'thin', or 'none' */
+}

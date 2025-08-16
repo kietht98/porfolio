@@ -1,0 +1,36 @@
+[
+  { "phrase": "Volunteering", "meaning": "Tình nguyện" },
+  { "phrase": "Nonprofit organization", "meaning": "Tổ chức phi lợi nhuận" },
+  { "phrase": "Community service", "meaning": "Dịch vụ cộng đồng" },
+  { "phrase": "Charity", "meaning": "Từ thiện" },
+  { "phrase": "Volunteer work", "meaning": "Công việc tình nguyện" },
+  { "phrase": "Fundraising", "meaning": "Gây quỹ" },
+  { "phrase": "Donation", "meaning": "Quyên góp" },
+  { "phrase": "Social impact", "meaning": "Tác động xã hội" },
+  {
+    "phrase": "Volunteer coordinator",
+    "meaning": "Điều phối viên tình nguyện"
+  },
+  { "phrase": "Volunteer program", "meaning": "Chương trình tình nguyện" },
+  { "phrase": "Service project", "meaning": "Dự án phục vụ" },
+  { "phrase": "Outreach", "meaning": "Tiếp cận cộng đồng" },
+  {
+    "phrase": "Skill-based volunteering",
+    "meaning": "Tình nguyện dựa trên kỹ năng"
+  },
+  { "phrase": "Voluntary service", "meaning": "Dịch vụ tình nguyện" },
+  { "phrase": "Mentorship", "meaning": "Hướng dẫn, cố vấn" },
+  { "phrase": "Advocacy", "meaning": "Vận động" },
+  { "phrase": "Pro bono", "meaning": "Miễn phí, không lấy tiền" },
+  { "phrase": "Beneficiary", "meaning": "Người thụ hưởng" },
+  { "phrase": "Volunteerism", "meaning": "Tinh thần tình nguyện" },
+  { "phrase": "Support services", "meaning": "Dịch vụ hỗ trợ" },
+  { "phrase": "Philanthropy", "meaning": "Nhân đạo, từ thiện" },
+  { "phrase": "Community engagement", "meaning": "Tham gia cộng đồng" },
+  { "phrase": "Volunteering opportunity", "meaning": "Cơ hội tình nguyện" },
+  { "phrase": "Impact assessment", "meaning": "Đánh giá tác động" },
+  { "phrase": "Volunteer shift", "meaning": "Ca tình nguyện" },
+  { "phrase": "Volunteer training", "meaning": "Đào tạo tình nguyện" },
+  { "phrase": "Service hours", "meaning": "Giờ phục vụ" },
+  { "phrase": "Volunteer recognition", "meaning": "Công nhận tình nguyện" }
+]

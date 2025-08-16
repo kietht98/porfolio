@@ -1,0 +1,33 @@
+[
+  { "phrase": "Gender equality", "meaning": "Bình đẳng giới" },
+  { "phrase": "Gender discrimination", "meaning": "Phân biệt giới tính" },
+  { "phrase": "Empowerment", "meaning": "Trao quyền" },
+  { "phrase": "Gender roles", "meaning": "Vai trò giới tính" },
+  { "phrase": "Equal opportunities", "meaning": "Cơ hội bình đẳng" },
+  { "phrase": "Pay gap", "meaning": "Chênh lệch lương" },
+  { "phrase": "Sexual harassment", "meaning": "Quấy rối tình dục" },
+  { "phrase": "Workplace equality", "meaning": "Bình đẳng tại nơi làm việc" },
+  { "phrase": "Affirmative action", "meaning": "Hành động khuyến khích" },
+  { "phrase": "Gender parity", "meaning": "Sự cân bằng giới tính" },
+  { "phrase": "Diversity and inclusion", "meaning": "Đa dạng và hòa nhập" },
+  { "phrase": "Gender bias", "meaning": "Thiên lệch giới tính" },
+  { "phrase": "Women's rights", "meaning": "Quyền của phụ nữ" },
+  { "phrase": "Men's rights", "meaning": "Quyền của nam giới" },
+  { "phrase": "Intersectionality", "meaning": "Sự giao thoa" },
+  { "phrase": "Gender identity", "meaning": "Danh tính giới tính" },
+  { "phrase": "Sexual orientation", "meaning": "Xu hướng tình dục" },
+  { "phrase": "Glass ceiling", "meaning": "Tường kính" },
+  {
+    "phrase": "Gender-based violence",
+    "meaning": "Bạo lực dựa trên giới tính"
+  },
+  { "phrase": "Equality legislation", "meaning": "Luật bình đẳng" },
+  { "phrase": "Gender quota", "meaning": "Tỷ lệ giới tính" },
+  { "phrase": "Role model", "meaning": "Hình mẫu" },
+  { "phrase": "Gender sensitivity", "meaning": "Nhạy cảm với giới tính" },
+  { "phrase": "Inclusive policies", "meaning": "Chính sách hòa nhập" },
+  { "phrase": "Social justice", "meaning": "Công bằng xã hội" },
+  { "phrase": "Gender equity", "meaning": "Công bằng giới tính" },
+  { "phrase": "Support network", "meaning": "Mạng lưới hỗ trợ" },
+  { "phrase": "Gender norms", "meaning": "Chuẩn mực giới tính" }
+]
