@@ -1,50 +1,53 @@
-      - name: Commit & pull-then-push to develop (create if missing)
-        env:
-          BRANCH: ${{ env.BRANCH }}
-          SRC_BRANCH: ${{ env.SRC_BRANCH }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -e
-          git config --global --add safe.directory "$PWD"
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+- name: Commit & pull-then-push to develop (create if missing)
+  env:
+    BRANCH: ${{ env.BRANCH }}
+    SRC_BRANCH: ${{ env.SRC_BRANCH }}
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    REPO: ${{ github.repository }}
+  run: |
+    set -euo pipefail
 
-          # Dùng remote có token để tránh 403
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
+    git config --global --add safe.directory "$PWD"
+    git config user.name  "github-actions[bot]"
+    git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git fetch origin
+    # Remote có token để tránh 403
+    git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
 
-          # Nếu develop đã có trên remote → reset local về remote cho sạch lịch sử
-          if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
-            git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
-            git reset --hard "origin/${BRANCH}"
-          else
-            # Chưa có develop thì tạo từ SRC_BRANCH (main)
-            git checkout -B "${BRANCH}" "${SRC_BRANCH}"
-          fi
+    git fetch origin --prune
 
-          # PULL TRƯỚC KHI PUSH (rebase để tránh merge commit rác)
-          git pull --rebase origin "${BRANCH}" || true
+    # Nếu develop đã có trên remote → reset local về remote cho sạch lịch sử
+    if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
+      git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
+      git reset --hard "origin/${BRANCH}"
+    else
+      # Chưa có develop thì tạo từ SRC_BRANCH (main)
+      git checkout -B "${BRANCH}" "${SRC_BRANCH}"
+    fi
 
-          # Stage & commit nếu có thay đổi
-          git add -A
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
-          git commit -m "Auto sync from Google Drive archive(s) [sanitized]"
+    # PULL TRƯỚC KHI PUSH (rebase để tránh merge commit rác)
+    git pull --rebase origin "${BRANCH}" || true
 
-          # Push (lần đầu set upstream) + retry chống race
-          n=0
-          until [ $n -ge 3 ]; do
-            if git push -u origin "${BRANCH}"; then
-              echo "Push OK"; exit 0
-            fi
-            echo "Push failed, pulling & retrying..."
-            git pull --rebase origin "${BRANCH}" || true
-            n=$((n+1)); sleep 2
-          done
+    # Stage & commit nếu có thay đổi
+    git add -A
+    if git diff --cached --quiet; then
+      echo "No changes to commit"
+      exit 0
+    fi
 
-          echo "Push failed after retries" >&2
-          exit 1
+    git commit -m "Auto sync from Google Drive archive(s) [sanitized]"
+
+    # Push (lần đầu set upstream) + retry chống race
+    n=0
+    until [ $n -ge 3 ]; do
+      if git push -u origin "${BRANCH}"; then
+        echo "Push OK"
+        exit 0
+      fi
+      echo "Push failed, pulling & retrying..."
+      git pull --rebase origin "${BRANCH}" || true
+      n=$((n+1)); sleep 2
+    done
+
+    echo "Push failed after retries" >&2
+    exit 1
