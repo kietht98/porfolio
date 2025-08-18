@@ -20,7 +20,7 @@ type Project = { id: string; title: string; desc: string; href?: string };
 
 function Projects({ data }: { data: Project[] }) {
   return (
-    <section className="relative rounded-3xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-700 p-10">
+    <section className="mb-6 relative rounded-3xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-700 p-10">
       {/* glow background */}
       <div
         aria-hidden

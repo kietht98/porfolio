@@ -31,7 +31,7 @@ function Hero() {
               delay: reduce ? 0 : 0.25,
               duration: reduce ? 0 : 0.45,
             }}
-            className="mt-5 max-w-xl text-sky-50/90"
+            className="mt-5 text-sky-50/90"
           >
             Frontend Engineer — React / Next.js / TypeScript
           </m.p>
